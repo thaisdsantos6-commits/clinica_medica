@@ -1,0 +1,27 @@
+# Java
+*.class
+*.jar
+out/
+build/
+target/
+bin/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Arquivos temporários
+*.tmp
+*.temp
+
+# Ambiente
+.env
+.env.*
+!.env.example
