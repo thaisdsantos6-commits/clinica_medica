@@ -88,6 +88,7 @@
       <button class="nav-btn" type="button" data-view="inicio"><span data-icon="home"></span><span>Início</span></button>
       <button class="nav-btn" type="button" data-view="pacientes"><span data-icon="users"></span><span>Pacientes</span></button>
       <button class="nav-btn" type="button" data-view="consultas"><span data-icon="calendar"></span><span>Consultas</span></button>
+      <button class="nav-btn" type="button" data-view="usuarios" id="nav-usuarios" hidden><span data-icon="users"></span><span>Equipe</span></button>
     </nav>
     <div class="side-foot">
       <div class="demo-tag" id="demo-tag">Modo demonstração com dados fictícios.<br><button type="button" id="btn-limpar">Limpar dados de exemplo</button></div>
@@ -170,6 +171,36 @@
           <div class="secao-head sem-margem"><h2>Agenda</h2></div>
           <div id="consultas-agenda"></div>
         </div>
+      </div>
+    </section>
+
+    <!-- Cadastro restrito de usuários da equipe -->
+    <section class="view" id="v-usuarios" hidden aria-labelledby="titulo">
+      <div class="painel cadastro-equipe">
+        <h2>Cadastrar pessoa da equipe</h2>
+        <p class="sub cadastro-ajuda">A conta será criada no Supabase e poderá entrar após o cadastro. Compartilhe a senha inicial por um canal seguro.</p>
+        <form class="form" id="form-usuario" novalidate>
+          <fieldset id="fs-usuario" class="form">
+            <div class="field">
+              <label for="u-nome">Nome</label>
+              <input class="input" id="u-nome" type="text" maxlength="100" autocomplete="name" required>
+            </div>
+            <div class="field">
+              <label for="u-email">E-mail</label>
+              <input class="input" id="u-email" type="email" maxlength="254" autocomplete="email" autocapitalize="none" required>
+            </div>
+            <div class="field">
+              <label for="u-senha">Senha inicial</label>
+              <input class="input" id="u-senha" type="password" minlength="8" maxlength="1024" autocomplete="new-password" required>
+            </div>
+            <div class="field">
+              <label for="u-confirma-senha">Confirmar senha inicial</label>
+              <input class="input" id="u-confirma-senha" type="password" minlength="8" maxlength="1024" autocomplete="new-password" required>
+            </div>
+            <p class="msg" id="msg-usuario" role="alert" aria-live="assertive"></p>
+            <button class="btn primary" type="submit" id="btn-cadastrar-usuario">Cadastrar usuário</button>
+          </fieldset>
+        </form>
       </div>
     </section>
   </main>

@@ -8,7 +8,7 @@ rem  Compila o backend (Java) para a pasta "out" e inicia o servidor.
 rem  Uso: de um duplo clique neste arquivo ou execute "run.bat" na raiz.
 rem  Requer JDK 11 ou superior (comando "javac" disponivel no PATH).
 rem
-rem  Configure SUPABASE_URL e SUPABASE_ANON_KEY no ambiente antes de iniciar.
+rem  Configure as variaveis Supabase documentadas no README antes de iniciar.
 rem ------------------------------------------------------------------
 
 echo.
@@ -33,6 +33,18 @@ if "%SUPABASE_URL%"=="" (
 
 if "%SUPABASE_ANON_KEY%"=="" (
     echo ERRO: configure SUPABASE_ANON_KEY no ambiente antes de iniciar.
+    pause
+    exit /b 1
+)
+
+if "%SUPABASE_SERVICE_ROLE_KEY%"=="" (
+    echo ERRO: configure SUPABASE_SERVICE_ROLE_KEY no ambiente do backend.
+    pause
+    exit /b 1
+)
+
+if "%SUPABASE_ADMIN_EMAIL%"=="" (
+    echo ERRO: configure SUPABASE_ADMIN_EMAIL no ambiente do backend.
     pause
     exit /b 1
 )

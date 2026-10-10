@@ -216,6 +216,8 @@ td{padding:14px 20px; border-top:1px solid var(--line); vertical-align:middle}
 .consultas-grid{display:grid; grid-template-columns:minmax(280px,350px) minmax(0,1fr); gap:44px; align-items:start}
 .painel{background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:26px; position:sticky; top:0}
 .painel h2{font:400 24px/1.2 var(--f-display); margin-bottom:18px}
+.cadastro-equipe{position:static; max-width:520px}
+.cadastro-ajuda{color:var(--ink-2); margin:-8px 0 20px}
 .aviso{display:grid; gap:10px; justify-items:start; margin-bottom:16px; color:var(--ink-2); font-size:14.5px}
 select.input{appearance:none; -webkit-appearance:none; padding-right:40px;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2367857A' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");

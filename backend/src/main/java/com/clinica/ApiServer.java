@@ -56,6 +56,7 @@ public class ApiServer {
 
         server.createContext("/api/login", seguro(ApiServer::login));
         server.createContext("/api/logout", seguro(ApiServer::logout));
+        server.createContext("/api/admin/users", seguro(ApiServer::adminUsers));
         server.createContext("/api/patients", seguro(ApiServer::patients));
         server.createContext("/api/appointments", seguro(ApiServer::appointments));
         server.createContext("/", seguro(ApiServer::staticFiles));
@@ -167,6 +168,32 @@ public class ApiServer {
         authService.encerrarSessao(tokenDaSessao(ex));
         ex.getResponseHeaders().add("Set-Cookie", cookie("", true));
         sendJson(ex, 200, "{\"ok\":true}");
+    }
+
+    private static void adminUsers(HttpExchange ex) throws IOException {
+        if (!"/api/admin/users".equals(ex.getRequestURI().getPath())) {
+            sendError(ex, 404, "Recurso não encontrado.");
+            return;
+        }
+        if (!"POST".equalsIgnoreCase(ex.getRequestMethod())) {
+            sendError(ex, 405, "Método não permitido.");
+            return;
+        }
+
+        Usuario administrador = authService.validarSessao(tokenDaSessao(ex));
+        if (administrador == null) {
+            sendError(ex, 401, "Sessão inexistente ou expirada. Faça login novamente.");
+            return;
+        }
+        if (!"ADMIN".equals(administrador.getPapel())) {
+            sendError(ex, 403, "Somente o administrador pode cadastrar usuários da equipe.");
+            return;
+        }
+
+        Map<String, String> corpo = lerJson(ex);
+        authService.cadastrarUsuario(
+                campo(corpo, "email"), campo(corpo, "senha"), campo(corpo, "nome"));
+        sendJson(ex, 201, "{\"ok\":true}");
     }
 
     private static void patients(HttpExchange ex) throws IOException {

@@ -276,7 +276,7 @@ const ApiHttp = {
   async autenticar(login, senha) {
     try {
       const r = await chamarApi('/api/login', { method: 'POST', body: JSON.stringify({ login, senha }) });
-      return { login: r.login };
+      return { login: r.login, papel: r.papel };
     } catch (e) {
       if (e instanceof ErroCredenciais) return null;
       throw e;
@@ -288,6 +288,12 @@ const ApiHttp = {
     } catch {
       // a sessão expira sozinha de qualquer forma
     }
+  },
+  async cadastrarUsuario(nome, email, senha) {
+    return chamarApi('/api/admin/users', {
+      method: 'POST',
+      body: JSON.stringify({ nome, email, senha })
+    });
   },
   async listarPacientes() {
     return chamarApi('/api/patients');
@@ -350,9 +356,11 @@ function quando(dt) {
 const VIEWS = {
   inicio:    { titulo: () => `Bem-vindo, ${sessao.login}!`, sub: () => cap(fmtDiaLongo.format(new Date())), acao: { txt: 'Agendar consulta', fazer: () => ir('consultas') } },
   pacientes: { titulo: () => 'Pacientes', sub: () => 'Cadastre e consulte quem é atendido na clínica.', acao: { txt: 'Novo paciente', fazer: () => abrirDialogo() } },
-  consultas: { titulo: () => 'Consultas', sub: () => 'Agende por médico, data e hora e acompanhe a agenda.', acao: null }
+  consultas: { titulo: () => 'Consultas', sub: () => 'Agende por médico, data e hora e acompanhe a agenda.', acao: null },
+  usuarios: { titulo: () => 'Equipe', sub: () => 'Cadastre os acessos das pessoas da equipe.', acao: null }
 };
 function ir(v) {
+  if (v === 'usuarios' && sessao?.papel !== 'ADMIN') { ir('inicio'); return; }
   viewAtual = v;
   $$('.view').forEach(s => s.hidden = s.id !== 'v-' + v);
   $$('.nav-btn[data-view]').forEach(b => b.hasAttribute('data-view') && (b.dataset.view === v ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
@@ -899,12 +907,49 @@ formLogin.addEventListener('submit', async e => {
   entrar(usuario);
 });
 
+const formUsuario = $('#form-usuario'), fsUsuario = $('#fs-usuario'), msgUsuario = $('#msg-usuario');
+formUsuario.addEventListener('submit', async e => {
+  e.preventDefault();
+  const nome = $('#u-nome').value.trim();
+  const email = $('#u-email').value.trim();
+  const senha = $('#u-senha').value;
+  const confirmarSenha = $('#u-confirma-senha').value;
+  setMsg(msgUsuario, '');
+
+  if (!nome || !email || !senha || !confirmarSenha) {
+    setMsg(msgUsuario, 'Preencha todos os campos.');
+    return;
+  }
+  if (senha.length < 8) {
+    setMsg(msgUsuario, 'A senha inicial deve ter pelo menos 8 caracteres.');
+    $('#u-senha').focus();
+    return;
+  }
+  if (senha !== confirmarSenha) {
+    setMsg(msgUsuario, 'As senhas não coincidem.');
+    $('#u-confirma-senha').focus();
+    return;
+  }
+
+  fsUsuario.disabled = true;
+  try {
+    await Api.cadastrarUsuario(nome, email, senha);
+    formUsuario.reset();
+    toast('Usuário da equipe cadastrado.');
+  } catch (err) {
+    setMsg(msgUsuario, err instanceof ErroNegocio ? err.message : 'Não foi possível cadastrar o usuário. Tente novamente.');
+  } finally {
+    fsUsuario.disabled = false;
+  }
+});
+
 async function entrar(usuario) {
-  sessao = { login: usuario.login };
+  sessao = { login: usuario.login, papel: usuario.papel || 'EQUIPE' };
   $('#login-view').hidden = true; $('#app-view').hidden = false;
   $('#user-login').textContent = sessao.login;
   $('#user-avatar').textContent = inicial(sessao.login);
   $('#demo-tag').hidden = CONFIG.MODO !== 'demo';
+  $('#nav-usuarios').hidden = sessao.papel !== 'ADMIN' || CONFIG.MODO === 'demo';
   await carregar();
   ir('inicio');
   armarInatividade();
@@ -915,6 +960,8 @@ function sair(aviso) {
   clearTimeout(inatividade); sessao = null; pacientes = []; consultas = [];
   if ($('#dlg-paciente').open) $('#dlg-paciente').close();
   if ($('#dlg-reagendar').open) $('#dlg-reagendar').close();
+  $('#form-usuario').reset();
+  $('#nav-usuarios').hidden = true;
   ['#proxima-corpo', '#resumo', '#inicio-agenda', '#pacientes-area', '#consultas-agenda'].forEach(s => $(s).replaceChildren());
   $('#form-consulta').reset(); $('#form-paciente').reset(); $('#form-reagendar').reset(); $('#busca').value = ''; resetarFoto();
   $('#app-view').hidden = true; $('#login-view').hidden = false;

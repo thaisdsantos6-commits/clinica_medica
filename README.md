@@ -115,16 +115,21 @@ Depois acesse <http://localhost:8080>.
 ### Configurar Supabase Auth
 
 1. Crie um projeto no Supabase e habilite o provedor de e-mail/senha em **Authentication → Sign In / Providers**.
-2. Em **Authentication → Users**, crie o usuário da equipe com e-mail e senha e confirme-o.
+2. Em **Authentication → Sign In / Providers**, habilite o provedor de e-mail e senha.
 3. Em **Project Settings → API**, copie a Project URL e a chave pública `anon`/publishable. Nunca use a chave `service_role` neste aplicativo.
-4. Configure estas variáveis no ambiente do backend:
+4. Crie manualmente a primeira conta de administrador em **Authentication → Users** e configure seu e-mail, exatamente, em `SUPABASE_ADMIN_EMAIL`.
+5. Configure estas variáveis no ambiente privado do backend:
 
 ```text
 SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_ANON_KEY=<chave-publica-anon>
+SUPABASE_SERVICE_ROLE_KEY=<chave-privilegiada-secreta>
+SUPABASE_ADMIN_EMAIL=<email-do-administrador>
 ```
 
-O backend valida as credenciais pelo endpoint de senha do Supabase Auth. Não é necessário criar uma tabela de senhas nem guardar senhas no banco da aplicação. O front-end local em `file://` continua oferecendo modo de demonstração; no modo API, não existe mais usuário/senha padrão.
+O backend valida as credenciais pelo Supabase Auth e usa a chave privilegiada somente para a rota de cadastro de usuários da equipe. Essa chave nunca deve ser exposta à Vercel/frontend, ao navegador ou ao GitHub. Não é necessário criar uma tabela de senhas nem guardar senhas no banco da aplicação. O front-end local em `file://` continua oferecendo modo de demonstração; no modo API, não existe usuário/senha padrão.
+
+Depois de entrar com o e-mail configurado em `SUPABASE_ADMIN_EMAIL`, a opção **Equipe** permite cadastrar uma pessoa da equipe com nome, e-mail e senha inicial. Somente essa conta pode usar o endpoint de cadastro; o controle também é aplicado no backend, não apenas escondido na tela.
 
 ### Hospedagem do frontend na Vercel
 
@@ -140,7 +145,7 @@ No [index.html](index.html) usado pela Vercel (ou em `frontend/index.html` se pu
 
 O login usa sessão temporária mantida em memória pelo backend. Os dados de pacientes e consultas também continuam em memória e se perdem quando o processo reinicia; esta integração conecta somente a autenticação ao Supabase, não migra esses dados.
 
-Para executar localmente, defina `SUPABASE_URL` e `SUPABASE_ANON_KEY` no ambiente antes de chamar `run.bat`.
+Para executar localmente, defina as quatro variáveis Supabase acima no ambiente antes de chamar `run.bat`.
 
 ## API
 
@@ -149,6 +154,7 @@ Resumo dos endpoints (detalhes, corpos e respostas em [`docs/API.md`](docs/API.m
 | Método | URL | Finalidade |
 |---|---|---|
 | `POST` | `/api/login` | Autentica e abre a sessão |
+| `POST` | `/api/admin/users` | Cadastra pessoa da equipe (somente administrador) |
 | `POST` | `/api/logout` | Encerra a sessão |
 | `GET` | `/api/patients` | Lista pacientes |
 | `POST` | `/api/patients` | Cadastra paciente |
@@ -162,7 +168,7 @@ Todas as rotas, exceto `/api/login` e `/api/logout`, exigem sessão válida (`40
 
 ## Segurança
 
-- O backend não armazena senhas. A autenticação é delegada ao Supabase Auth usando apenas a chave pública `anon`/publishable.
+- O backend não armazena senhas. A autenticação é delegada ao Supabase Auth. A chave privilegiada só é utilizada no backend para provisionar contas e nunca deve ser exposta ao cliente.
 - A sessão da aplicação é um token aleatório de 256 bits em cookie `HttpOnly`; expira após 10 minutos sem uso. Configure `SameSite=None` e `Secure` quando o frontend e o backend estiverem em origens diferentes.
 - O backend restringe CORS às origens explicitamente configuradas em `APP_ALLOWED_ORIGINS`.
 - Todas as validações do frontend são repetidas no backend.

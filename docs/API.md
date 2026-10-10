@@ -27,6 +27,15 @@ O campo `login` recebe o e-mail cadastrado e confirmado em Supabase **Authentica
 Resposta `200`: `{"login": "equipe@clinica.com", "papel": "ADMIN"}` + cabeçalho `Set-Cookie`.
 Erros: `400` (campos vazios ou grandes demais), `401` (credenciais inválidas), `403` (origem não permitida por CORS).
 
+### `POST /api/admin/users` — cadastrar pessoa da equipe
+
+Somente a sessão do e-mail configurado em `SUPABASE_ADMIN_EMAIL` pode cadastrar usuários. O backend cria a conta confirmada pelo endpoint Admin do Supabase Auth. A chave `SUPABASE_SERVICE_ROLE_KEY` é usada exclusivamente no servidor.
+
+Enviado: `{"nome":"Ana Souza","email":"ana@clinica.com","senha":"<senha-inicial>"}`
+
+Resposta `201`: `{"ok":true}`.
+Erros: `400` (campos inválidos, e-mail já usado ou política de senha), `401` (sem sessão), `403` (não administrador), `404` (rota não encontrada), `405` (método incorreto).
+
 ### `POST /api/logout` — sair
 
 Sem corpo. Resposta `200`: `{"ok": true}`. Invalida a sessão no servidor e limpa o cookie.
