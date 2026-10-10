@@ -10,7 +10,8 @@ O backend em Java usa apenas o JDK (sem Spring, Maven ou Gradle) e também serve
 
 ## Tecnologias
 
-- Java (somente JDK: `com.sun.net.httpserver`)
+- Java 11+ (somente JDK: `com.sun.net.httpserver`, `java.net.http.HttpClient`)
+- Supabase Auth (e-mail e senha)
 - HTML5
 - CSS3
 - JavaScript (puro, sem frameworks)
@@ -40,7 +41,7 @@ O backend em Java usa apenas o JDK (sem Spring, Maven ou Gradle) e também serve
 | `backend/src/model` | Entidades: `Paciente`, `Consulta`, `Usuario` |
 | `backend/src/repository` | Armazenamento e consulta de dados (`PacienteRepository`, em memória) |
 | `backend/src/service` | Regras de negócio e validações: `PacienteService`, `AgendaService`, `AutenticacaoService` |
-| `backend/src/util` | Funções auxiliares: `Seguranca` (hash de senha e tokens) |
+| `backend/src/util` | Funções auxiliares: `Seguranca` (tokens de sessão) |
 | `backend/src/ApiServer.java` | Ponto de entrada: rotas `/api` e arquivos do frontend |
 | `frontend/` | Interface web: `index.html`, `style.css`, `app.js` |
 | `docs/` | Documentação adicional (`API.md`) |
@@ -111,23 +112,35 @@ java -cp out ApiServer
 
 Depois acesse <http://localhost:8080>.
 
-### Credencial de demonstração
+### Configurar Supabase Auth
 
-| Usuário | Senha |
-|---|---|
-| `admin` | `123456` |
+1. Crie um projeto no Supabase e habilite o provedor de e-mail/senha em **Authentication → Sign In / Providers**.
+2. Em **Authentication → Users**, crie o usuário da equipe com e-mail e senha e confirme-o.
+3. Em **Project Settings → API**, copie a Project URL e a chave pública `anon`/publishable. Nunca use a chave `service_role` neste aplicativo.
+4. Configure estas variáveis no ambiente do backend:
 
-É uma credencial **somente de demonstração**. Para usar outra, defina as variáveis de ambiente antes de iniciar o servidor:
-
-```bat
-set CLINICA_ADMIN_LOGIN=seu_login
-set CLINICA_ADMIN_SENHA=sua_senha
-run.bat
+```text
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_ANON_KEY=<chave-publica-anon>
 ```
 
-```bash
-CLINICA_ADMIN_LOGIN=seu_login CLINICA_ADMIN_SENHA=sua_senha java -cp out ApiServer
+O backend valida as credenciais pelo endpoint de senha do Supabase Auth. Não é necessário criar uma tabela de senhas nem guardar senhas no banco da aplicação. O front-end local em `file://` continua oferecendo modo de demonstração; no modo API, não existe mais usuário/senha padrão.
+
+### Hospedagem do frontend na Vercel
+
+A Vercel hospeda o frontend estático, não executa este servidor Java. Publique o backend Java em um serviço que execute processos Java e configure no backend, além das variáveis acima:
+
+```text
+APP_ALLOWED_ORIGINS=https://<seu-dominio-vercel>
+COOKIE_SECURE=true
+COOKIE_SAME_SITE=None
 ```
+
+No [index.html](index.html) usado pela Vercel (ou em `frontend/index.html` se publicar essa pasta), preencha a meta `api-base-url` com a URL HTTPS pública do backend, sem barra no final. O backend só aceita origens listadas em `APP_ALLOWED_ORIGINS`. Para vários domínios, separe as origens por vírgula. `SameSite=None` requer `COOKIE_SECURE=true`.
+
+O login usa sessão temporária mantida em memória pelo backend. Os dados de pacientes e consultas também continuam em memória e se perdem quando o processo reinicia; esta integração conecta somente a autenticação ao Supabase, não migra esses dados.
+
+Para executar localmente, defina `SUPABASE_URL` e `SUPABASE_ANON_KEY` no ambiente antes de chamar `run.bat`.
 
 ## API
 
@@ -149,19 +162,19 @@ Todas as rotas, exceto `/api/login` e `/api/logout`, exigem sessão válida (`40
 
 ## Segurança
 
-- As credenciais presentes no projeto (`admin` / `123456`) são **apenas para demonstração** e estão identificadas como DEMO em `AutenticacaoService.java`. Não use em produção.
-- Senhas são guardadas como hash **PBKDF2-HMAC-SHA256** com salt aleatório e comparadas em tempo constante (`util/Seguranca.java`).
-- A sessão é um token aleatório de 256 bits em cookie `HttpOnly` + `SameSite=Strict`; expira após 10 minutos sem uso.
+- O backend não armazena senhas. A autenticação é delegada ao Supabase Auth usando apenas a chave pública `anon`/publishable.
+- A sessão da aplicação é um token aleatório de 256 bits em cookie `HttpOnly`; expira após 10 minutos sem uso. Configure `SameSite=None` e `Secure` quando o frontend e o backend estiverem em origens diferentes.
+- O backend restringe CORS às origens explicitamente configuradas em `APP_ALLOWED_ORIGINS`.
 - Todas as validações do frontend são repetidas no backend.
 - O frontend renderiza dados com `textContent` (nunca `innerHTML`) para evitar XSS.
 - **Nunca publique** `.env`, senhas reais, tokens, chaves privadas ou credenciais. O `.gitignore` já ignora `.env` e arquivos compilados.
 
-**Limitações conhecidas (por ser demonstração):** tráfego em HTTP sem TLS, sem limite de tentativas de login no servidor (o bloqueio de 5 tentativas existe apenas na interface), um único usuário/perfil e dados apenas em memória.
+**Limitações conhecidas:** é necessário publicar o backend separadamente do frontend na Vercel; sessões, pacientes e consultas ficam em memória e se perdem quando o backend reinicia; o bloqueio de tentativas de login existe apenas na interface.
 
 ## Melhorias futuras
 
-- Banco de dados real
-- Autenticação mais robusta (HTTPS, limite de tentativas no servidor, múltiplos usuários)
+- Persistir pacientes, consultas e sessões em banco de dados
+- Limite de tentativas de login no servidor
 - Controle de permissões por perfil
 - Edição de pacientes
 - Cancelamento de consultas

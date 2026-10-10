@@ -8,9 +8,7 @@ rem  Compila o backend (Java) para a pasta "out" e inicia o servidor.
 rem  Uso: de um duplo clique neste arquivo ou execute "run.bat" na raiz.
 rem  Requer JDK 11 ou superior (comando "javac" disponivel no PATH).
 rem
-rem  Opcional - trocar a credencial de demonstracao (admin / 123456):
-rem      set CLINICA_ADMIN_LOGIN=seu_login
-rem      set CLINICA_ADMIN_SENHA=sua_senha
+rem  Configure SUPABASE_URL e SUPABASE_ANON_KEY no ambiente antes de iniciar.
 rem ------------------------------------------------------------------
 
 echo.
@@ -23,6 +21,18 @@ where javac >nul 2>nul
 if errorlevel 1 (
     echo ERRO: "javac" nao encontrado.
     echo Instale o JDK 11 ou superior e abra um novo terminal.
+    pause
+    exit /b 1
+)
+
+if "%SUPABASE_URL%"=="" (
+    echo ERRO: configure SUPABASE_URL no ambiente antes de iniciar.
+    pause
+    exit /b 1
+)
+
+if "%SUPABASE_ANON_KEY%"=="" (
+    echo ERRO: configure SUPABASE_ANON_KEY no ambiente antes de iniciar.
     pause
     exit /b 1
 )

@@ -15,7 +15,7 @@ const CONFIG = {
   MODO: location.protocol === 'file:' ? 'demo' : 'api',
   // 'api': usa o backend Java (padrão quando servido em http://localhost:8080).
   // 'demo': dados fictícios só no navegador, sem backend.
-  BASE_URL: '',                        // vazio = mesma origem: o ApiServer serve o front e a API em http://localhost:8080
+  BASE_URL: document.querySelector('meta[name="api-base-url"]')?.content.trim().replace(/\/+$/, '') || '',
   INATIVIDADE_MS: 10 * 60 * 1000,
   MAX_TENTATIVAS: 5,
   BLOQUEIO_S: 30
@@ -88,6 +88,7 @@ function toast(txt) { const t = $('#toast'); t.textContent = txt; t.classList.ad
    ===================================================================== */
 class ErroNegocio extends Error {}
 class ErroSessao extends Error {}
+class ErroCredenciais extends Error {}
 
 function cpfValido(cpf) {
   const d = digitos(cpf);
@@ -239,7 +240,7 @@ async function chamarApi(caminho, opcoes = {}) {
   let resp;
   try {
     resp = await fetch(CONFIG.BASE_URL + caminho, {
-      credentials: 'same-origin',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       ...opcoes
     });
@@ -251,8 +252,9 @@ async function chamarApi(caminho, opcoes = {}) {
   if (!resp.ok) {
     const mensagem = corpo && (corpo.error || corpo.mensagem) ? (corpo.error || corpo.mensagem) : 'Não foi possível concluir a operação.';
     if (resp.status === 401) {
-      // sessão do servidor expirou (a tela de login não conta: ali 401 = credenciais inválidas)
-      if (caminho !== '/api/login' && sessao && aoExpirarSessao) aoExpirarSessao();
+      if (caminho === '/api/login') throw new ErroCredenciais(mensagem);
+      // Nas demais rotas, 401 indica sessão expirada.
+      if (sessao && aoExpirarSessao) aoExpirarSessao();
       throw new ErroSessao(mensagem);
     }
     throw new ErroNegocio(mensagem);
@@ -276,7 +278,7 @@ const ApiHttp = {
       const r = await chamarApi('/api/login', { method: 'POST', body: JSON.stringify({ login, senha }) });
       return { login: r.login };
     } catch (e) {
-      if (e instanceof ErroNegocio || e instanceof ErroSessao) return null;
+      if (e instanceof ErroCredenciais) return null;
       throw e;
     }
   },
@@ -874,10 +876,10 @@ function bloquear() {
 formLogin.addEventListener('submit', async e => {
   e.preventDefault();
   if (btnLogin.disabled) return;
-  const login = inLogin.value.trim(), senha = inSenha.value.trim();
+  const login = inLogin.value.trim(), senha = inSenha.value;
   inLogin.removeAttribute('aria-invalid'); inSenha.removeAttribute('aria-invalid');
   if (!login || !senha) {
-    setMsg(msgLogin, 'Login e senha são obrigatórios.');
+    setMsg(msgLogin, 'E-mail e senha são obrigatórios.');
     (!login ? inLogin : inSenha).setAttribute('aria-invalid', 'true'); (!login ? inLogin : inSenha).focus();
     return;
   }
@@ -890,7 +892,7 @@ formLogin.addEventListener('submit', async e => {
   if (!usuario) {
     falhas++;
     if (falhas >= CONFIG.MAX_TENTATIVAS) bloquear();
-    else setMsg(msgLogin, 'Login ou senha inválidos.');   // mensagem genérica: não revela qual dos dois errou
+    else setMsg(msgLogin, 'E-mail ou senha inválidos.');   // mensagem genérica: não revela qual dos dois errou
     inSenha.focus(); return;
   }
   falhas = 0; inLogin.value = '';

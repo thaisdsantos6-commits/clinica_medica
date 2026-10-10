@@ -7,6 +7,7 @@
 <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
+<meta name="api-base-url" content="">
 <title>Centro de Saúde Vitalis | Acesso da equipe</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M5 27C3 14 11 5 28 4c1 15-7 24-23 23Z' fill='%234DAF7C'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -56,17 +57,17 @@
     <form class="login-box" id="login-form" novalidate>
       <div>
         <h1>Acesso da equipe</h1>
-        <p class="sub">Entre com seu login e senha para abrir a agenda.</p>
+        <p class="sub">Entre com seu e-mail e senha para abrir a agenda.</p>
       </div>
       <div class="form">
         <div class="field">
-          <label for="login">Login</label>
-          <input class="input" id="login" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="40" required autofocus>
+          <label for="login">E-mail</label>
+          <input class="input" id="login" name="username" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254" required autofocus>
         </div>
         <div class="field">
           <label for="senha">Senha</label>
           <div class="pw">
-            <input class="input" id="senha" name="password" type="password" autocomplete="current-password" maxlength="72" required>
+            <input class="input" id="senha" name="password" type="password" autocomplete="current-password" maxlength="1024" required>
             <button class="icon-btn" type="button" id="pw-toggle" aria-label="Mostrar senha" aria-pressed="false"><span data-icon="eye"></span></button>
           </div>
         </div>

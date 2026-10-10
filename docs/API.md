@@ -2,7 +2,7 @@
 
 Base: `http://localhost:8080`. Corpo e respostas em JSON (UTF-8).
 
-**Autenticação:** `POST /api/login` define o cookie `CLINICA_SESSAO` (`HttpOnly`, `SameSite=Strict`). Os demais endpoints exigem esse cookie; sem sessão válida respondem `401`.
+**Autenticação:** `POST /api/login` valida e-mail e senha pelo Supabase Auth e define o cookie `CLINICA_SESSAO` (`HttpOnly`). Os demais endpoints exigem esse cookie; sem sessão válida respondem `401`. Para chamadas cross-origin, configure `APP_ALLOWED_ORIGINS`, `COOKIE_SECURE=true` e `COOKIE_SAME_SITE=None` no backend.
 
 **Erros** têm sempre o formato `{"error": "mensagem"}`.
 
@@ -20,10 +20,12 @@ Base: `http://localhost:8080`. Corpo e respostas em JSON (UTF-8).
 
 ### `POST /api/login` — entrar
 
-Enviado: `{"login": "admin", "senha": "123456"}`
+Enviado: `{"login": "equipe@clinica.com", "senha": "<senha-do-usuario-supabase>"}`
 
-Resposta `200`: `{"login": "admin", "papel": "ADMIN"}` + cabeçalho `Set-Cookie`.
-Erros: `400` (campos vazios ou grandes demais), `401` (`Login ou senha inválidos.`).
+O campo `login` recebe o e-mail cadastrado e confirmado em Supabase **Authentication → Users**. A senha é validada pelo Supabase; o backend não guarda a senha nem a chave pública no código.
+
+Resposta `200`: `{"login": "equipe@clinica.com", "papel": "ADMIN"}` + cabeçalho `Set-Cookie`.
+Erros: `400` (campos vazios ou grandes demais), `401` (credenciais inválidas), `403` (origem não permitida por CORS).
 
 ### `POST /api/logout` — sair
 

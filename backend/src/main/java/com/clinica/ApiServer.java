@@ -17,6 +17,7 @@ import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 
 import controller.PacienteController;
@@ -36,8 +37,11 @@ import service.PacienteService;
  * é procurada a partir do diretório atual.
  */
 public class ApiServer {
-    private static final int PORTA = 8080;
+    private static final int PORTA = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
     private static final String COOKIE_SESSAO = "CLINICA_SESSAO";
+    private static final boolean COOKIE_SECURE = Boolean.parseBoolean(System.getenv().getOrDefault("COOKIE_SECURE", "false"));
+    private static final String COOKIE_SAME_SITE = cookieSameSite();
+    private static final Set<String> ORIGENS_PERMITIDAS = origensPermitidas();
     private static final int TAMANHO_MAX_CORPO = 400_000;   // bytes (cabe a foto de até 200 mil caracteres)
 
     private static final AutenticacaoService authService = new AutenticacaoService();
@@ -70,6 +74,7 @@ public class ApiServer {
     private static HttpHandler seguro(HttpHandler handler) {
         return ex -> {
             try {
+                if (!prepararCors(ex)) return;
                 handler.handle(ex);
             } catch (IllegalArgumentException e) {
                 responderErro(ex, 400, e.getMessage());
@@ -80,6 +85,54 @@ public class ApiServer {
                 ex.close();
             }
         };
+    }
+
+    private static Set<String> origensPermitidas() {
+        String configuradas = System.getenv().getOrDefault("APP_ALLOWED_ORIGINS", "");
+        if (configuradas.isBlank()) return Set.of();
+        return java.util.Arrays.stream(configuradas.split(","))
+                .map(String::trim)
+                .filter(origem -> !origem.isEmpty())
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    private static String cookieSameSite() {
+        String valor = System.getenv().getOrDefault("COOKIE_SAME_SITE", "Strict");
+        if (!"Strict".equalsIgnoreCase(valor) && !"Lax".equalsIgnoreCase(valor) && !"None".equalsIgnoreCase(valor)) {
+            throw new IllegalStateException("COOKIE_SAME_SITE deve ser Strict, Lax ou None.");
+        }
+        if ("None".equalsIgnoreCase(valor) && !Boolean.parseBoolean(System.getenv().getOrDefault("COOKIE_SECURE", "false"))) {
+            throw new IllegalStateException("COOKIE_SECURE=true é obrigatório com COOKIE_SAME_SITE=None.");
+        }
+        return valor;
+    }
+
+    private static boolean prepararCors(HttpExchange ex) throws IOException {
+        Headers headers = ex.getResponseHeaders();
+        String origin = ex.getRequestHeaders().getFirst("Origin");
+        if (origin != null) {
+            if (!ORIGENS_PERMITIDAS.contains(origin)) {
+                sendError(ex, 403, "Origem não autorizada.");
+                return false;
+            }
+            headers.set("Access-Control-Allow-Origin", origin);
+            headers.set("Access-Control-Allow-Credentials", "true");
+            headers.set("Vary", "Origin");
+        }
+        if ("OPTIONS".equalsIgnoreCase(ex.getRequestMethod())) {
+            headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+            headers.set("Access-Control-Allow-Headers", "Content-Type");
+            headers.set("Access-Control-Max-Age", "600");
+            ex.sendResponseHeaders(204, -1);
+            return false;
+        }
+        return true;
+    }
+
+    private static String cookie(String token, boolean expirar) {
+        return COOKIE_SESSAO + "=" + token + "; Path=/; HttpOnly; SameSite=" + COOKIE_SAME_SITE
+                + (COOKIE_SECURE ? "; Secure" : "")
+                + (expirar ? "; Max-Age=0" : "");
     }
 
     // ------------------------------------------------------------------ rotas
@@ -94,13 +147,11 @@ public class ApiServer {
         Usuario usuario = authService.autenticar(campo(corpo, "login"), campo(corpo, "senha"));
 
         if (usuario == null) {
-            sendError(ex, 401, "Login ou senha inválidos.");
+            sendError(ex, 401, "E-mail ou senha inválidos.");
             return;
         }
-
         String token = authService.iniciarSessao(usuario);
-        ex.getResponseHeaders().add("Set-Cookie",
-                COOKIE_SESSAO + "=" + token + "; Path=/; HttpOnly; SameSite=Strict");
+        ex.getResponseHeaders().add("Set-Cookie", cookie(token, false));
 
         sendJson(ex, 200, "{"
                 + "\"login\":\"" + esc(usuario.getLogin()) + "\","
@@ -113,10 +164,8 @@ public class ApiServer {
             sendError(ex, 405, "Método não permitido.");
             return;
         }
-
         authService.encerrarSessao(tokenDaSessao(ex));
-        ex.getResponseHeaders().add("Set-Cookie",
-                COOKIE_SESSAO + "=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0");
+        ex.getResponseHeaders().add("Set-Cookie", cookie("", true));
         sendJson(ex, 200, "{\"ok\":true}");
     }
 

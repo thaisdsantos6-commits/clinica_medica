@@ -1,29 +1,26 @@
 package service;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import model.Usuario;
 import util.Seguranca;
 
-/** Autenticação de usuários e controle de sessões (em memória). */
+/** Autenticação via Supabase Auth e controle local de sessões. */
 public class AutenticacaoService {
-    // ====================================================================
-    //  CREDENCIAL DE DEMONSTRAÇÃO (DEMO) — NÃO USE EM PRODUÇÃO.
-    //  É usada apenas quando as variáveis de ambiente abaixo não estão definidas:
-    //    CLINICA_ADMIN_LOGIN  e  CLINICA_ADMIN_SENHA
-    // ====================================================================
-    private static final String DEMO_LOGIN = "admin";
-    private static final String DEMO_SENHA = "123456";
-
-    public static final int LOGIN_MAX = 40;
-    public static final int SENHA_MAX = 72;
+    public static final int LOGIN_MAX = 254;
+    public static final int SENHA_MAX = 1024;
     public static final long INATIVIDADE_MS = 10 * 60 * 1000L;
 
-    private final Map<String, Usuario> usuarios = new ConcurrentHashMap<>();
+    private final URI endpointLogin;
+    private final String chavePublica;
+    private final HttpClient cliente;
     private final Map<String, Sessao> sessoes = new HashMap<>();
-    // hash descartável: mantém o tempo de resposta parecido quando o login não existe
-    private final String hashFalso = Seguranca.gerarHash("senha-inexistente");
 
     private static final class Sessao {
         final String login;
@@ -36,41 +33,78 @@ public class AutenticacaoService {
     }
 
     public AutenticacaoService() {
-        String login = System.getenv("CLINICA_ADMIN_LOGIN");
-        String senha = System.getenv("CLINICA_ADMIN_SENHA");
-        if (login == null || login.isBlank() || senha == null || senha.isBlank()) {
-            login = DEMO_LOGIN;
-            senha = DEMO_SENHA;
-            System.out.println("AVISO: usando a credencial de DEMONSTRAÇÃO (" + DEMO_LOGIN + "). "
-                    + "Defina CLINICA_ADMIN_LOGIN e CLINICA_ADMIN_SENHA para usar outra.");
+        String url = System.getenv("SUPABASE_URL");
+        chavePublica = System.getenv("SUPABASE_ANON_KEY");
+        if (url == null || url.isBlank() || chavePublica == null || chavePublica.isBlank()) {
+            throw new IllegalStateException(
+                    "Configure SUPABASE_URL e SUPABASE_ANON_KEY antes de iniciar o servidor.");
         }
-        cadastrarUsuario(login, senha, "ADMIN");
-    }
 
-    public final void cadastrarUsuario(String login, String senha, String papel) {
-        usuarios.put(login, new Usuario(login, Seguranca.gerarHash(senha), papel));
+        endpointLogin = URI.create(url.replaceAll("/+$", "") + "/auth/v1/token?grant_type=password");
+        cliente = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build();
     }
 
     /**
-     * Retorna o usuário se as credenciais forem válidas e null se forem inválidas.
-     * Lança IllegalArgumentException se login/senha estiverem vazios ou grandes demais.
+     * Retorna o usuário se o e-mail e a senha forem válidos e null se forem inválidos.
+     * Lança IllegalArgumentException se os campos estiverem vazios ou grandes demais.
      */
     public Usuario autenticar(String login, String senha) {
         if (login == null || login.isBlank() || senha == null || senha.isBlank()) {
-            throw new IllegalArgumentException("Login e senha são obrigatórios.");
+            throw new IllegalArgumentException("E-mail e senha são obrigatórios.");
         }
         if (login.length() > LOGIN_MAX || senha.length() > SENHA_MAX) {
-            throw new IllegalArgumentException("Login ou senha excedem o tamanho máximo permitido.");
+            throw new IllegalArgumentException("E-mail ou senha excedem o tamanho máximo permitido.");
         }
 
-        Usuario usuario = usuarios.get(login);
-        boolean senhaConfere = Seguranca.verificar(senha, usuario != null ? usuario.getSenhaHash() : hashFalso);
-        return (usuario != null && senhaConfere) ? usuario : null;
+        HttpRequest requisicao = HttpRequest.newBuilder(endpointLogin)
+                .timeout(Duration.ofSeconds(15))
+                .header("apikey", chavePublica)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        "{\"email\":\"" + json(login) + "\",\"password\":\"" + json(senha) + "\"}"))
+                .build();
+
+        try {
+            HttpResponse<Void> resposta = cliente.send(requisicao, HttpResponse.BodyHandlers.discarding());
+            int status = resposta.statusCode();
+            if (status == 400 || status == 401) return null;
+            if (status < 200 || status >= 300) {
+                throw new IllegalStateException("Supabase Auth respondeu com HTTP " + status + ".");
+            }
+            return new Usuario(login, "ADMIN");
+        } catch (IOException e) {
+            throw new IllegalStateException("Não foi possível conectar ao Supabase Auth.", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("A autenticação no Supabase foi interrompida.", e);
+        }
+    }
+
+    private static String json(String valor) {
+        StringBuilder resultado = new StringBuilder(valor.length() + 16);
+        for (char c : valor.toCharArray()) {
+            switch (c) {
+                case '"': resultado.append("\\\""); break;
+                case '\\': resultado.append("\\\\"); break;
+                case '\b': resultado.append("\\b"); break;
+                case '\f': resultado.append("\\f"); break;
+                case '\n': resultado.append("\\n"); break;
+                case '\r': resultado.append("\\r"); break;
+                case '\t': resultado.append("\\t"); break;
+                default:
+                    if (c < 0x20) resultado.append(String.format("\\u%04x", (int) c));
+                    else resultado.append(c);
+            }
+        }
+        return resultado.toString();
     }
 
     // ---------------------------------------------------------------- sessões
 
-    /** Cria uma sessão para o usuário e devolve o token (enviado ao navegador em cookie HttpOnly). */
+    /** Cria uma sessão local e devolve o token enviado ao navegador em cookie HttpOnly. */
     public synchronized String iniciarSessao(Usuario usuario) {
         long agora = System.currentTimeMillis();
         sessoes.values().removeIf(s -> agora - s.ultimoUso > INATIVIDADE_MS);
@@ -91,7 +125,7 @@ public class AutenticacaoService {
             return null;
         }
         sessao.ultimoUso = agora;
-        return usuarios.get(sessao.login);
+        return new Usuario(sessao.login, "ADMIN");
     }
 
     public synchronized void encerrarSessao(String token) {
