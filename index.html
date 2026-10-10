@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Camada extra de segurança no navegador (em produção, defina também o CSP completo no servidor) -->
+<meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Centro de Saúde Vitalis | Acesso da equipe</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M5 27C3 14 11 5 28 4c1 15-7 24-23 23Z' fill='%234DAF7C'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Young+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Símbolos reutilizáveis -->
+<svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false">
+  <symbol id="folha" viewBox="0 0 32 32">
+    <path d="M5 27C3 14 11 5 28 4c1 15-7 24-23 23Z" fill="#4DAF7C"/>
+    <path d="M6 26l6-6 2 2 3-8 2 2 5-9" fill="none" stroke="#0D3A2F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="aneis" viewBox="0 0 640 640">
+    <g fill="none" stroke="currentColor">
+      <ellipse cx="320" cy="320" rx="46" ry="42" stroke-opacity=".16"/>
+      <ellipse cx="322" cy="318" rx="92" ry="86" stroke-opacity=".2"/>
+      <ellipse cx="318" cy="322" rx="140" ry="130" stroke-opacity=".14"/>
+      <ellipse cx="324" cy="319" rx="190" ry="176" stroke-opacity=".12"/>
+      <ellipse cx="317" cy="323" rx="242" ry="224" stroke-opacity=".14"/>
+      <ellipse cx="322" cy="320" rx="296" ry="272" stroke-opacity=".09"/>
+      <ellipse cx="320" cy="320" rx="352" ry="326" stroke-opacity=".07"/>
+      <ellipse cx="321" cy="321" rx="412" ry="380" stroke-opacity=".05"/>
+    </g>
+  </symbol>
+</svg>
+
+<!-- ============ LOGIN ============ -->
+<main class="login" id="login-view">
+  <section class="login-art" aria-hidden="true">
+    <svg class="rings" viewBox="0 0 640 640" focusable="false">
+      <use href="#aneis" width="640" height="640"/>
+    </svg>
+    <svg class="ecg-line" viewBox="0 0 640 150" preserveAspectRatio="none" focusable="false">
+      <path class="ecg" pathLength="1" d="M0 75H206L232 75L250 48L274 105L296 34L314 89L328 75H640"/>
+    </svg>
+    <div class="brand"><svg class="ic" width="34" height="34"><use href="#folha"/></svg><span>Centro de Saúde Vitalis</span></div>
+    <div class="art-copy">
+      <h2>Cada consulta, no seu tempo.</h2>
+      <p>Cadastro de pacientes e agenda médica reunidos em um só lugar, para a equipe atender sem pressa.</p>
+    </div>
+  </section>
+
+  <section class="login-panel">
+    <form class="login-box" id="login-form" novalidate>
+      <div>
+        <h1>Acesso da equipe</h1>
+        <p class="sub">Entre com seu login e senha para abrir a agenda.</p>
+      </div>
+      <div class="form">
+        <div class="field">
+          <label for="login">Login</label>
+          <input class="input" id="login" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="40" required autofocus>
+        </div>
+        <div class="field">
+          <label for="senha">Senha</label>
+          <div class="pw">
+            <input class="input" id="senha" name="password" type="password" autocomplete="current-password" maxlength="72" required>
+            <button class="icon-btn" type="button" id="pw-toggle" aria-label="Mostrar senha" aria-pressed="false"><span data-icon="eye"></span></button>
+          </div>
+        </div>
+        <p class="msg" id="login-msg" role="alert" aria-live="assertive"></p>
+        <button class="btn primary block" type="submit" id="login-btn">Entrar</button>
+      </div>
+      <p class="seguro"><span data-icon="lock" data-size="18"></span><span>Sua sessão fica só na memória deste navegador e se encerra após 10 minutos sem uso.</span></p>
+      <p class="demo-note" id="demo-note">Modo demonstração: nesta versão, qualquer login e senha preenchidos entram. Ao ligar ao backend real, a validação passa a ser feita pelo servidor.</p>
+    </form>
+  </section>
+</main>
+
+<!-- ============ APLICATIVO ============ -->
+<div class="app" id="app-view" hidden>
+  <aside class="side">
+    <div class="brand"><svg class="ic" width="32" height="32" aria-hidden="true"><use href="#folha"/></svg><span>Vitalis</span></div>
+    <nav class="nav" aria-label="Principal">
+      <button class="nav-btn" type="button" data-view="inicio"><span data-icon="home"></span><span>Início</span></button>
+      <button class="nav-btn" type="button" data-view="pacientes"><span data-icon="users"></span><span>Pacientes</span></button>
+      <button class="nav-btn" type="button" data-view="consultas"><span data-icon="calendar"></span><span>Consultas</span></button>
+    </nav>
+    <div class="side-foot">
+      <div class="demo-tag" id="demo-tag">Modo demonstração com dados fictícios.<br><button type="button" id="btn-limpar">Limpar dados de exemplo</button></div>
+      <div class="side-user"><span class="avatar" id="user-avatar" aria-hidden="true"></span><div><b id="user-login"></b><small>Equipe da clínica</small></div></div>
+      <button class="nav-btn" type="button" id="btn-sair"><span data-icon="logout"></span><span>Sair</span></button>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <header class="top">
+      <div>
+        <h1 id="titulo" tabindex="-1"></h1>
+        <p id="subtitulo"></p>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" type="button" id="btn-tema" aria-label="Alternar tema claro ou escuro"><span data-icon="moon"></span></button>
+        <button class="btn primary" type="button" id="top-acao"><span data-icon="plus" data-size="18"></span><span></span></button>
+      </div>
+    </header>
+
+    <!-- Início -->
+    <section class="view" id="v-inicio" aria-labelledby="titulo">
+      <div class="inicio-grid">
+        <article class="proxima">
+          <svg class="proxima-aneis" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="#aneis" width="640" height="640"/></svg>
+          <div class="proxima-corpo" id="proxima-corpo"></div>
+        </article>
+        <div class="resumo" id="resumo"></div>
+      </div>
+      <div class="secao-head"><h2>Próximos atendimentos</h2><button class="link" type="button" data-ir="consultas">Ver agenda completa</button></div>
+      <div id="inicio-agenda"></div>
+    </section>
+
+    <!-- Pacientes -->
+    <section class="view" id="v-pacientes" hidden aria-labelledby="titulo">
+      <div class="toolbar">
+        <div class="busca">
+          <span data-icon="search" data-size="20"></span>
+          <label class="sr" for="busca">Buscar paciente</label>
+          <input class="input" id="busca" type="search" placeholder="Buscar por nome, CPF ou convênio" autocomplete="off" maxlength="60">
+        </div>
+      </div>
+      <div id="pacientes-area"></div>
+      <p class="contagem" id="pacientes-contagem" aria-live="polite"></p>
+    </section>
+
+    <!-- Consultas -->
+    <section class="view" id="v-consultas" hidden aria-labelledby="titulo">
+      <div class="consultas-grid">
+        <div class="painel">
+          <h2>Agendar consulta</h2>
+          <div class="aviso" id="aviso-sem-paciente" hidden>
+            <span>Nenhum paciente cadastrado para agendar consulta.</span>
+            <button class="btn ghost" type="button" id="btn-cadastrar-antes">Cadastrar paciente</button>
+          </div>
+          <form class="form" id="form-consulta" novalidate>
+            <fieldset id="fs-consulta" class="form">
+              <div class="field">
+                <label for="c-paciente">Paciente</label>
+                <select class="input" id="c-paciente" required></select>
+              </div>
+              <div class="field">
+                <label for="c-medico">Nome do médico</label>
+                <input class="input" id="c-medico" type="text" maxlength="80" autocomplete="off" placeholder="Ex.: Dra. Camila Rocha" required>
+              </div>
+              <div class="field">
+                <label for="c-data">Data e hora</label>
+                <input class="input" id="c-data" type="datetime-local" step="60" required>
+              </div>
+              <div class="field">
+                <label for="c-orcamento">Orçamento da consulta (R$)</label>
+                <input class="input" id="c-orcamento" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Opcional">
+              </div>
+              <p class="msg" id="msg-consulta" role="alert"></p>
+              <button class="btn primary" type="submit" id="btn-agendar">Agendar consulta</button>
+            </fieldset>
+          </form>
+        </div>
+        <div>
+          <div class="secao-head sem-margem"><h2>Agenda</h2></div>
+          <div id="consultas-agenda"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Cadastro de paciente -->
+<dialog id="dlg-paciente" aria-labelledby="dlg-titulo">
+  <form class="dlg form" id="form-paciente" novalidate>
+    <div>
+      <h2 id="dlg-titulo">Novo paciente</h2>
+      <p class="sub" id="dlg-descricao">Nome, CPF e convênio são obrigatórios. A foto é opcional.</p>
+    </div>
+    <div class="dlg-topo">
+      <div class="foto-picker">
+        <button type="button" class="foto-botao" id="p-foto-botao" aria-label="Adicionar foto do paciente">
+          <img id="p-foto-preview" alt="" hidden>
+          <span id="p-foto-letra" aria-hidden="true">?</span>
+          <span class="foto-selo" aria-hidden="true"><span data-icon="camera" data-size="15"></span></span>
+        </button>
+        <input type="file" id="p-foto-arquivo" accept="image/png,image/jpeg,image/webp" class="sr" tabindex="-1">
+        <button type="button" class="link foto-remover" id="p-foto-remover" hidden>Remover foto</button>
+      </div>
+      <div class="form">
+        <div class="field">
+          <label for="p-nome">Nome</label>
+          <input class="input" id="p-nome" type="text" maxlength="100" autocomplete="off" required>
+        </div>
+        <div class="field">
+          <label for="p-cpf">CPF</label>
+          <input class="input" id="p-cpf" type="text" inputmode="numeric" maxlength="14" autocomplete="off" placeholder="000.000.000-00" required>
+        </div>
+        <div class="field">
+          <label for="p-convenio">Convênio</label>
+          <input class="input" id="p-convenio" type="text" maxlength="60" autocomplete="off" list="convenios" placeholder="Ex.: Particular" required>
+          <datalist id="convenios"><option value="Particular"><option value="Unimed"><option value="Bradesco Saúde"><option value="SulAmérica"><option value="Amil"><option value="Hapvida"></datalist>
+        </div>
+      </div>
+    </div>
+    <p class="msg" id="msg-paciente" role="alert"></p>
+    <div class="dlg-acoes">
+      <button class="btn ghost" type="button" id="p-cancelar">Cancelar</button>
+      <button class="btn primary" type="submit" id="p-salvar">Cadastrar paciente</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Detalhes do paciente -->
+<dialog id="dlg-paciente-detalhes" aria-labelledby="dlg-detalhes-titulo">
+  <div class="dlg form" id="form-detalhes-paciente">
+    <div>
+      <h2 id="dlg-detalhes-titulo">Detalhes do paciente</h2>
+    </div>
+    <div class="dlg-topo detalhes-topo">
+      <div class="foto-picker">
+        <div class="foto-botao readonly" id="d-p-foto-botao" aria-hidden="true">
+          <img id="d-p-foto-preview" alt="" hidden>
+          <span id="d-p-foto-letra" aria-hidden="true">?</span>
+        </div>
+      </div>
+      <div class="form">
+        <div class="field">
+          <label>Nome</label>
+          <div class="input readonly-text" id="d-p-nome"></div>
+        </div>
+        <div class="field">
+          <label>CPF</label>
+          <div class="input readonly-text" id="d-p-cpf"></div>
+        </div>
+        <div class="field">
+          <label>Convênio</label>
+          <div class="input readonly-text" id="d-p-convenio"></div>
+        </div>
+      </div>
+    </div>
+    <div class="dlg-acoes">
+      <button class="btn ghost" type="button" id="d-fechar">Fechar</button>
+      <button class="btn primary" type="button" id="d-editar">Editar cadastro</button>
+      <button class="btn danger" type="button" id="d-excluir">Excluir paciente</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Orçamento da consulta -->
+<dialog id="dlg-orcamento" aria-labelledby="o-titulo">
+  <form class="dlg form" id="form-orcamento" novalidate>
+    <div>
+      <h2 id="o-titulo">Orçamento da consulta</h2>
+      <p class="sub" id="o-quem"></p>
+    </div>
+    <div class="field">
+      <label for="o-valor">Valor total (R$)</label>
+      <input class="input" id="o-valor" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Ex.: 150,00" required>
+    </div>
+    <p class="msg" id="msg-orcamento" role="alert"></p>
+    <div class="dlg-acoes">
+      <button class="btn ghost danger" type="button" id="o-remover">Remover orçamento</button>
+      <button class="btn ghost" type="button" id="o-cancelar">Cancelar</button>
+      <button class="btn primary" type="submit" id="o-salvar">Salvar orçamento</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Reagendar consulta -->
+<dialog id="dlg-reagendar" aria-labelledby="dlg-reagendar-titulo">
+  <form class="dlg form" id="form-reagendar" novalidate>
+    <div>
+      <h2 id="dlg-reagendar-titulo">Reagendar consulta</h2>
+      <p class="sub" id="reagendar-quem"></p>
+    </div>
+    <div class="field">
+      <label for="r-data">Nova data e hora</label>
+      <input class="input" id="r-data" type="datetime-local" step="60" required>
+    </div>
+    <p class="msg" id="msg-reagendar" role="alert"></p>
+    <div class="dlg-acoes">
+      <button class="btn ghost" type="button" id="r-cancelar">Cancelar</button>
+      <button class="btn primary" type="submit" id="r-salvar">Salvar novo horário</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
